@@ -40,7 +40,7 @@ contract SuperchainFactory {
         bytes memory bytecode,
         bytes memory constructorArgs,
         bytes32 salt
-    ) external {
+    ) external returns(address){
         // Combine bytecode with constructor arguments
         bytes memory deployBytecode = bytes.concat(bytecode, constructorArgs);
         
@@ -61,6 +61,7 @@ contract SuperchainFactory {
             );
             emit CrossChainMessageSent(chainIds[i], address(this));
         }
+        return deployedAddr;
     }
 
     /**

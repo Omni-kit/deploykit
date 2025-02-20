@@ -1,9 +1,8 @@
 {
-    "chains": [100, 101, 102],
-    "factoryAddress": "0xYourDeployedFactoryAddress",
-    "contractName": "MyContract",
-    "constructorArgs": ["arg1", 42],
-    "salt": "mysalt",
-    "rpcUrl": "https://rpc.chain100.example.com",
-    "privateKey": "0xYourPrivateKey"
-  }
+  "chains": [100, 101, 102],
+  "contractName": "MyContract",
+  "constructorArgs": ["arg1", 42],
+  "salt": "mysalt",
+  "rpcUrl": "https://rpc.chain100.example.com",
+  "privateKey": "0xYourPrivateKey"
+}
