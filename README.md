@@ -1,66 +1,122 @@
-## Foundry
+# Deploykit User Flow
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+This guide walks you through how to use `deploykit` to deploy your smart contracts across multiple chains using the `SuperchainFactory`.
 
-Foundry consists of:
+## Prerequisites
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+Before starting:
+- Ensure **Node.js** (16.x+) and **npm** are installed.
+- Install **Foundry** globally (`forge` command available). [Instructions](https://book.getfoundry.sh/getting-started/installation).
+- Have a private key for the deployment account ready (set as an environment variable).
 
-## Documentation
+## Step-by-Step User Flow
 
-https://book.getfoundry.sh/
+### Option 1: Using a Config File
 
-## Usage
+#### 1. Create Your Smart Contract
 
-### Build
+Write your contract in a Foundry project (e.g., `src/TestToken.sol`):
 
-```shell
-$ forge build
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract TestToken {
+    string public name;
+    string public symbol;
+
+    constructor(string memory _name, string memory _symbol) {
+        name = _name;
+        symbol = _symbol;
+    }
+}
 ```
 
-### Test
+#### 2. Set Up Your Config File
 
-```shell
-$ forge test
+Create `superchain.json` in your project root:
+
+```json
+{
+  "chains": [901, 902],
+  "contractName": "TestToken",
+  "constructorArgs": ["MyToken", "MTK"],
+  "rpcUrl": "http://127.0.0.1:9545",
+  "salt": "mysalt"
+}
 ```
 
-### Format
+**Fields:**
+- `chains`: Chain IDs to deploy to.
+- `contractName`: Matches your contract file (e.g., `TestToken.sol`).
+- `constructorArgs`: Arguments for your contract’s constructor.
+- `rpcUrl`: RPC endpoint of the initiating chain.
+- `salt`: String for deterministic deployment.
 
-```shell
-$ forge fmt
+#### 3. Set Your Private Key
+
+Export your private key securely:
+
+```bash
+export PRIVATE_KEY=0xYourPrivateKey
 ```
 
-### Gas Snapshots
+#### 4. Run Deploykit
 
-```shell
-$ forge snapshot
+In your project directory:
+
+```bash
+deploykit deploy superchain.json
 ```
 
-### Anvil
+#### 5. What Happens
+- Compiles your contract with `forge build`.
+- Deploys to the chain at `rpcUrl` and sends cross-chain messages to other chains.
+- Outputs the transaction hash and deployed addresses.
 
-```shell
-$ anvil
+#### 6. Verify Output
+
+Example output:
+
+```
+Compiling contract with forge build...
+Deploying contract across chains: [901, 902]
+Transaction hash: 0x...
+Deployed contract address on local chain: 0x...
+Computed CREATE2 address (for all chains): 0x...
+Contract has been deployed across all specified chains.
 ```
 
-### Deploy
+---
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+### Option 2: Interactive Mode
+
+#### 1. Create Your Smart Contract
+
+Same as above (e.g., `src/TestToken.sol`).
+
+#### 2. Set Your Private Key
+
+Export your private key:
+
+```bash
+export PRIVATE_KEY=0xYourPrivateKey
 ```
 
-### Cast
+#### 3. Run Deploykit Without a Config
 
-```shell
-$ cast <subcommand>
+In your project directory:
+
+```bash
+deploykit deploy
 ```
 
-### Help
+#### 4. Follow the Prompts
 
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+Enter the Details accordingly, and then verify the output as shown above.
+  
+## Conclusion
+
+By following this guide, you can efficiently deploy your smart contracts across multiple chains using `deploykit`. Whether you choose a configuration file or interactive mode, `deploykit` simplifies multi-chain deployments. 
+
+For further assistance, refer to the official documentation or open an issue in the repository. Happy deploying! 🚀
