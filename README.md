@@ -21,13 +21,11 @@ Write your contract in a Foundry project (e.g., `src/TestToken.sol`):
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract TestToken {
-    string public name;
-    string public symbol;
+import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
-    constructor(string memory _name, string memory _symbol) {
-        name = _name;
-        symbol = _symbol;
+contract TestToken is ERC20 {
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {
+        _mint(msg.sender, 1_000_000 * 10 ** decimals());
     }
 }
 ```
