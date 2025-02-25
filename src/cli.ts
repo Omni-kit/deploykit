@@ -9,13 +9,13 @@ import { loadArtifact } from './artifact';
 import { formatSalt, computeCreate2Address } from './utils';
 import { deployContract } from './deploy';
 
-const FACTORY_ADDRESS = '0x6Aac2c1414489A8362AC2feac5EE448Bf7199A14'; //CHANGE THE FACTORY CONTRACT ADDRESS
+const FACTORY_ADDRESS = '0x6Aac2c1414489A8362AC2feac5EE448Bf7199A14'; // CHANGE THE FACTORY CONTRACT ADDRESS
 
 // ABI definition for interacting with the factory contract
 const factoryAbi = [
   'function deployContract(uint256[] calldata chainIds, bytes memory bytecode, bytes32 salt) external returns (address)',
   'event ContractDeployed(address indexed contractAddress, uint256 indexed chainId)',
-  'event CrossChainMessageSent(uint256 indexed chainId, address indexed targetFactory)'
+  'event CrossChainMessageSent(uint256 indexed chainId, address indexed targetFactory)',
 ];
 
 program
@@ -29,7 +29,9 @@ program
       // Retrieve the private key from environment variables
       const privateKey = process.env.PRIVATE_KEY;
       if (!privateKey) {
-        throw new Error('PRIVATE_KEY environment variable is not set. Set it with: export PRIVATE_KEY=0xYourPrivateKey');
+        throw new Error(
+          'PRIVATE_KEY environment variable is not set. Set it with: export PRIVATE_KEY=0xYourPrivateKey'
+        );
       }
 
       // Compile the contract before attempting deployment
@@ -39,9 +41,10 @@ program
       // Prepare the contract bytecode and constructor arguments for deployment
       const iface = new ethers.utils.Interface(artifact.abi);
       const bytecode = artifact.bytecode.object;
-      const encodedArgs = config.constructorArgs && config.constructorArgs.length > 0
-        ? iface.encodeDeploy(config.constructorArgs)
-        : '0x';
+      const encodedArgs =
+        config.constructorArgs && config.constructorArgs.length > 0
+          ? iface.encodeDeploy(config.constructorArgs)
+          : '0x';
       const deployBytecode = ethers.utils.hexConcat([bytecode, encodedArgs]);
       const formattedSalt = formatSalt(config.salt);
 
@@ -50,9 +53,33 @@ program
       const wallet = new ethers.Wallet(privateKey, provider);
       const factory = new Contract(FACTORY_ADDRESS, factoryAbi, wallet);
 
-      // Initiate contract deployment via the factory contract
-      const tx = await factory.deployContract(config.chains, deployBytecode, formattedSalt);
+      // Attempt to estimate gas for the transaction
+      let gasEstimate;
+      try {
+        gasEstimate = await provider.estimateGas({
+          from: wallet.address,
+          to: FACTORY_ADDRESS,
+          data: factory.interface.encodeFunctionData('deployContract', [
+            config.chains,
+            deployBytecode,
+            formattedSalt,
+          ]),
+        });
+        console.log('Estimated gas:', gasEstimate.toString());
+      } catch (error) {
+        console.warn('Gas estimation failed, using manual gas limit of 5,000,000');
+        gasEstimate = 5000000; // Set a high manual gas limit
+      }
+
+      // Initiate contract deployment with the estimated or manual gas limit
+      const tx = await factory.deployContract(config.chains, deployBytecode, formattedSalt, {
+        gasLimit: gasEstimate,
+      });
       const receipt: TransactionReceipt = await tx.wait();
+
+      // Log transaction hash and gas used
+      console.log('Transaction hash:', receipt.transactionHash);
+      console.log('Gas used:', receipt.gasUsed.toString());
 
       // Parse the transaction receipt logs to extract the deployed contract address
       const factoryInterface = new ethers.utils.Interface(factoryAbi);
@@ -72,7 +99,6 @@ program
       // Retrieve and display the deployed contract address from the event logs
       const parsedEvent = factoryInterface.parseLog(event);
       const deployedAddress = ethers.utils.getAddress(parsedEvent.args.contractAddress);
-      console.log('Transaction hash:', receipt.transactionHash);
       console.log('Deployed contract address on local chain:', deployedAddress);
 
       // Compute the expected CREATE2 deployment address for verification

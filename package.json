@@ -1,6 +1,6 @@
 {
   "name": "@omni-kit/omni-deployer",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Deploy smart contracts across multiple chains using SuperchainFactory",
   "main": "dist/cli.js",
   "bin": "./dist/cli.js",
@@ -10,7 +10,15 @@
     "dev": "ts-node src/cli.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["interop", "superchain", "solidity", "deployment", "multi-chain", "cross-chain", "ethereum"],
+  "keywords": [
+    "interop",
+    "superchain",
+    "solidity",
+    "deployment",
+    "multi-chain",
+    "cross-chain",
+    "ethereum"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
