@@ -1,6 +1,6 @@
 # Deploykit User Flow
 
-This guide walks you through how to use `deploykit` to deploy your smart contracts across multiple chains using the `SuperchainFactory`.
+This guide walks you through how to use `omni-deployer` to deploy your smart contracts across multiple chains using the `SuperchainFactory`.
 
 ## Prerequisites
 
@@ -11,9 +11,17 @@ Before starting:
 
 ## Step-by-Step User Flow
 
+### 1. Run Supersim Anvil
+
+Before deploying, start the supersim anvil to simulate the Superchain environment:
+
+```bash
+supersim fork --network=sepolia --chains=op,base,mode --interop.autorelay
+```
+
 ### Option 1: Using a Config File
 
-#### 1. Create Your Smart Contract
+#### 2. Create Your Smart Contract
 
 Write your contract in a Foundry project (e.g., `src/TestToken.sol`):
 
@@ -30,7 +38,7 @@ contract TestToken is ERC20 {
 }
 ```
 
-#### 2. Set Up Your Config File
+#### 3. Set Up Your Config File
 
 Create `superchain.json` in your project root:
 
@@ -51,7 +59,7 @@ Create `superchain.json` in your project root:
 - `rpcUrl`: RPC endpoint of the initiating chain.
 - `salt`: String for deterministic deployment.
 
-#### 3. Set Your Private Key
+#### 4. Set Your Private Key
 
 Export your private key securely:
 
@@ -59,20 +67,20 @@ Export your private key securely:
 export PRIVATE_KEY=0xYourPrivateKey
 ```
 
-#### 4. Run Deploykit
+#### 5. Run Omni-Deployer
 
 In your project directory:
 
 ```bash
-deploykit deploy superchain.json
+omni-deployer deploy superchain.json
 ```
 
-#### 5. What Happens
+#### 6. What Happens
 - Compiles your contract with `forge build`.
 - Deploys to the chain at `rpcUrl` and sends cross-chain messages to other chains.
 - Outputs the transaction hash and deployed addresses.
 
-#### 6. Verify Output
+#### 7. Verify Output
 
 Example output:
 
@@ -89,11 +97,11 @@ Contract has been deployed across all specified chains.
 
 ### Option 2: Interactive Mode
 
-#### 1. Create Your Smart Contract
+#### 2. Create Your Smart Contract
 
 Same as above (e.g., `src/TestToken.sol`).
 
-#### 2. Set Your Private Key
+#### 3. Set Your Private Key
 
 Export your private key:
 
@@ -101,20 +109,20 @@ Export your private key:
 export PRIVATE_KEY=0xYourPrivateKey
 ```
 
-#### 3. Run Deploykit Without a Config
+#### 4. Run Omni-Deployer Without a Config
 
 In your project directory:
 
 ```bash
-deploykit deploy
+omni-deployer deploy
 ```
 
-#### 4. Follow the Prompts
+#### 5. Follow the Prompts
 
 Enter the Details accordingly, and then verify the output as shown above.
   
 ## Conclusion
 
-By following this guide, you can efficiently deploy your smart contracts across multiple chains using `deploykit`. Whether you choose a configuration file or interactive mode, `deploykit` simplifies multi-chain deployments. 
+By following this guide, you can efficiently deploy your smart contracts across multiple chains using `omni-deployer`. Whether you choose a configuration file or interactive mode, `omni-deployer` simplifies multi-chain deployments. 
 
 For further assistance, refer to the official documentation or open an issue in the repository. Happy deploying! 🚀

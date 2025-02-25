@@ -9,7 +9,7 @@ import { loadArtifact } from './artifact';
 import { formatSalt, computeCreate2Address } from './utils';
 import { deployContract } from './deploy';
 
-const FACTORY_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3'; //CHANGE THE FACTORY CONTRACT ADDRESS
+const FACTORY_ADDRESS = '0x6Aac2c1414489A8362AC2feac5EE448Bf7199A14'; //CHANGE THE FACTORY CONTRACT ADDRESS
 
 // ABI definition for interacting with the factory contract
 const factoryAbi = [

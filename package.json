@@ -1,5 +1,5 @@
 {
-  "name": "deploykit",
+  "name": "@omni-kit/omni-deployer",
   "version": "0.1.0",
   "description": "Deploy smart contracts across multiple chains using SuperchainFactory",
   "main": "dist/cli.js",
