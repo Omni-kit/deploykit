@@ -11,7 +11,15 @@ Before starting:
 
 ## Step-by-Step User Flow
 
-### 1. Run Supersim Anvil
+### 1. Install Omni-Deployer
+
+Before deploying, install the Omni-Deployer library:
+
+```bash
+npm i @omni-kit/omni-deployer
+```
+
+### 2. Run Supersim Anvil
 
 Before deploying, start the supersim anvil to simulate the Superchain environment:
 
@@ -21,7 +29,7 @@ supersim fork --network=sepolia --chains=op,base,mode --interop.autorelay
 
 ### Option 1: Using a Config File
 
-#### 2. Create Your Smart Contract
+#### 3. Create Your Smart Contract
 
 Write your contract in a Foundry project (e.g., `src/TestToken.sol`):
 
@@ -38,7 +46,7 @@ contract TestToken is ERC20 {
 }
 ```
 
-#### 3. Set Up Your Config File
+#### 4. Set Up Your Config File
 
 Create `superchain.json` in your project root:
 
@@ -59,7 +67,7 @@ Create `superchain.json` in your project root:
 - `rpcUrl`: RPC endpoint of the initiating chain.
 - `salt`: String for deterministic deployment.
 
-#### 4. Set Your Private Key
+#### 5. Set Your Private Key
 
 Export your private key securely:
 
@@ -67,7 +75,7 @@ Export your private key securely:
 export PRIVATE_KEY=0xYourPrivateKey
 ```
 
-#### 5. Run Omni-Deployer
+#### 6. Run Omni-Deployer
 
 In your project directory:
 
@@ -75,12 +83,12 @@ In your project directory:
 omni-deployer deploy superchain.json
 ```
 
-#### 6. What Happens
+#### 7. What Happens
 - Compiles your contract with `forge build`.
 - Deploys to the chain at `rpcUrl` and sends cross-chain messages to other chains.
 - Outputs the transaction hash and deployed addresses.
 
-#### 7. Verify Output
+#### 8. Verify Output
 
 Example output:
 
@@ -97,11 +105,11 @@ Contract has been deployed across all specified chains.
 
 ### Option 2: Interactive Mode
 
-#### 2. Create Your Smart Contract
+#### 3. Create Your Smart Contract
 
 Same as above (e.g., `src/TestToken.sol`).
 
-#### 3. Set Your Private Key
+#### 4. Set Your Private Key
 
 Export your private key:
 
@@ -109,7 +117,7 @@ Export your private key:
 export PRIVATE_KEY=0xYourPrivateKey
 ```
 
-#### 4. Run Omni-Deployer Without a Config
+#### 5. Run Omni-Deployer Without a Config
 
 In your project directory:
 
@@ -117,7 +125,7 @@ In your project directory:
 omni-deployer deploy
 ```
 
-#### 5. Follow the Prompts
+#### 6. Follow the Prompts
 
 Enter the Details accordingly, and then verify the output as shown above.
   
