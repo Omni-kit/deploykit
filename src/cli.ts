@@ -7,9 +7,6 @@ import { loadConfig } from './config';
 import { compileContract } from './compile';
 import { loadArtifact } from './artifact';
 import { formatSalt, computeCreate2Address } from './utils';
-import { deployContract } from './deploy';
-
-const FACTORY_ADDRESS = '0x6Aac2c1414489A8362AC2feac5EE448Bf7199A14'; // CHANGE THE FACTORY CONTRACT ADDRESS
 
 // ABI definition for interacting with the factory contract
 const factoryAbi = [
@@ -23,7 +20,7 @@ program
   .description('Deploy a contract across multiple chains using DeploymentFactory')
   .action(async (configPath: string | undefined) => {
     try {
-      // Load deployment configuration from a given file path
+      // Load deployment configuration
       const config = await loadConfig(configPath);
 
       // Retrieve the private key from environment variables
@@ -34,11 +31,11 @@ program
         );
       }
 
-      // Compile the contract before attempting deployment
+      // Compile the contract and load its artifact
       compileContract();
       const artifact = loadArtifact(config.contractName);
 
-      // Prepare the contract bytecode and constructor arguments for deployment
+      // Prepare bytecode and constructor arguments
       const iface = new ethers.utils.Interface(artifact.abi);
       const bytecode = artifact.bytecode.object;
       const encodedArgs =
@@ -48,17 +45,17 @@ program
       const deployBytecode = ethers.utils.hexConcat([bytecode, encodedArgs]);
       const formattedSalt = formatSalt(config.salt);
 
-      // Set up provider and wallet to interact with the blockchain
+      // Set up provider, wallet, and factory contract
       const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
       const wallet = new ethers.Wallet(privateKey, provider);
-      const factory = new Contract(FACTORY_ADDRESS, factoryAbi, wallet);
+      const factory = new Contract(config.factoryContract, factoryAbi, wallet);
 
-      // Attempt to estimate gas for the transaction
+      // Estimate gas for the deployment transaction
       let gasEstimate;
       try {
         gasEstimate = await provider.estimateGas({
           from: wallet.address,
-          to: FACTORY_ADDRESS,
+          to: config.factoryContract,
           data: factory.interface.encodeFunctionData('deployContract', [
             config.chains,
             deployBytecode,
@@ -68,20 +65,20 @@ program
         console.log('Estimated gas:', gasEstimate.toString());
       } catch (error) {
         console.warn('Gas estimation failed, using manual gas limit of 5,000,000');
-        gasEstimate = 5000000; // Set a high manual gas limit
+        gasEstimate = 5000000; // Fallback gas limit
       }
 
-      // Initiate contract deployment with the estimated or manual gas limit
+      // Deploy the contract
       const tx = await factory.deployContract(config.chains, deployBytecode, formattedSalt, {
         gasLimit: gasEstimate,
       });
       const receipt: TransactionReceipt = await tx.wait();
 
-      // Log transaction hash and gas used
+      // Log transaction details
       console.log('Transaction hash:', receipt.transactionHash);
       console.log('Gas used:', receipt.gasUsed.toString());
 
-      // Parse the transaction receipt logs to extract the deployed contract address
+      // Extract deployed contract address from logs
       const factoryInterface = new ethers.utils.Interface(factoryAbi);
       const event = receipt.logs.find((log: ethers.providers.Log) => {
         try {
@@ -96,13 +93,12 @@ program
         throw new Error('ContractDeployed event not found in receipt');
       }
 
-      // Retrieve and display the deployed contract address from the event logs
       const parsedEvent = factoryInterface.parseLog(event);
       const deployedAddress = ethers.utils.getAddress(parsedEvent.args.contractAddress);
       console.log('Deployed contract address on local chain:', deployedAddress);
 
-      // Compute the expected CREATE2 deployment address for verification
-      const computedAddress = computeCreate2Address(FACTORY_ADDRESS, formattedSalt, deployBytecode);
+      // Compute and verify CREATE2 address
+      const computedAddress = computeCreate2Address(config.factoryContract, formattedSalt, deployBytecode);
       console.log('Computed CREATE2 address (for all chains):', computedAddress);
       if (deployedAddress.toLowerCase() !== computedAddress.toLowerCase()) {
         console.warn('Warning: Local deployed address does not match computed CREATE2 address');
@@ -115,5 +111,4 @@ program
     }
   });
 
-// Parse command-line arguments and execute the specified command
 program.parse(process.argv);

@@ -1,5 +1,6 @@
 {
   "chains": [100, 101, 102],
+  "factoryContract" : "0x538DB2dF0f1CCF9fBA392A0248D41292f01D3966",
   "contractName": "MyContract",
   "constructorArgs": ["arg1", 42],
   "salt": "mysalt",

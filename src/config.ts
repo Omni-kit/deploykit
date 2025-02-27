@@ -3,6 +3,7 @@ import inquirer from 'inquirer';
 
 interface Config {
   chains: number[];
+  factoryContract: string; // Added factoryContract field
   contractName: string;
   constructorArgs?: any[];
   salt: string;
@@ -31,6 +32,13 @@ async function loadConfig(configPath?: string): Promise<Config> {
     },
     {
       type: 'input',
+      name: 'factoryContract',
+      message: 'Enter factory contract address (e.g., 0x538DB2dF0f1CCF9fBA392A0248D41292f01D3966):',
+      when: () => !config.factoryContract,
+      validate: (input: string) => !!input ? true : 'Factory contract address is required.'
+    },
+    {
+      type: 'input',
       name: 'contractName',
       message: 'Enter contract name (e.g., MyContract):',
       when: () => !config.contractName,
@@ -43,32 +51,23 @@ async function loadConfig(configPath?: string): Promise<Config> {
       when: () => !config.constructorArgs || !Array.isArray(config.constructorArgs),
       default: '',
       filter: (input: unknown): any[] => {
-        // Coerce input to string, default to empty string if undefined
         const inputStr = String(input ?? '');
-        if (!inputStr.trim()) return []; // Empty input returns empty array
-
-        // Try parsing as JSON array first
+        if (!inputStr.trim()) return [];
         try {
           const parsed = JSON.parse(inputStr);
           if (Array.isArray(parsed)) return parsed;
         } catch {
-          // Fallback to comma-separated list if JSON parsing fails
           return inputStr.split(',').map((item) => item.trim());
         }
-        // If not a valid JSON array, treat as comma-separated
         return inputStr.split(',').map((item) => item.trim());
       },
       validate: (input: unknown): boolean | string => {
-        // Coerce input to string, default to empty string if undefined
         const inputStr = String(input ?? '');
-        if (!inputStr.trim()) return true; // Allow empty input
-
-        // Try JSON array validation first
+        if (!inputStr.trim()) return true;
         try {
           const parsed = JSON.parse(inputStr);
           return Array.isArray(parsed) ? true : 'Input must be a JSON array (e.g., ["arg1", 42]) or comma-separated list (e.g., arg1, 42)';
         } catch {
-          // Validate as comma-separated list
           return inputStr.includes(',') || !inputStr.includes(' ')
             ? true
             : 'Input must be a comma-separated list (e.g., arg1, 42) or JSON array (e.g., ["arg1", 42])';
@@ -94,8 +93,12 @@ async function loadConfig(configPath?: string): Promise<Config> {
   const answers = await inquirer.prompt(questions);
   config = { ...config, ...answers };
 
+  // Final validation
   if (!config.chains || !Array.isArray(config.chains) || config.chains.length === 0) {
     throw new Error('Invalid or missing "chains"');
+  }
+  if (!config.factoryContract) {
+    throw new Error('Missing "factoryContract"');
   }
   if (!config.contractName) {
     throw new Error('Missing "contractName"');
