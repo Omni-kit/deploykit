@@ -80,7 +80,7 @@ export PRIVATE_KEY=0xYourPrivateKey
 In your project directory:
 
 ```bash
-omni-deployer deploy superchain.json
+npx omni-deployer deploy superchain.json
 ```
 
 #### 6. What Happens
@@ -122,7 +122,7 @@ export PRIVATE_KEY=0xYourPrivateKey
 In your project directory:
 
 ```bash
-omni-deployer deploy
+npx omni-deployer deploy
 ```
 
 #### 5. Follow the Prompts
