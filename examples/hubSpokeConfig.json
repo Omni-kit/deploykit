@@ -1,0 +1,10 @@
+{
+  "spokeChains": [10, 420, 8453, 84531],
+  "factoryContract": "0x538DB2dF0f1CCF9fBA392A0248D41292f01D3966",
+  "hubContract": "HubContract",
+  "spokeContract": "SpokeContract",
+  "hubConstructorArgs": ["arg1", "arg2"],
+  "spokeConstructorArgs": ["arg1", "arg2"],
+  "salt": "my-hub-spoke-deployment-v1",
+  "rpcUrl": "https://mainnet.optimism.io"
+}
