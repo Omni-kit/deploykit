@@ -1,6 +1,9 @@
 # Deploykit User Flow
 
-This guide walks you through how to use `omni-deployer` to deploy your smart contracts across multiple chains using the `SuperchainFactory`.
+This guide walks you through how to use `omni-deployer` to deploy your smart contracts across multiple chains using the `SuperchainFactory`. The package supports two main commands:
+
+- **`deploy`**: Deploys the same contract on multiple chains at the same address.
+- **`deploy-hs`**: Deploys hub-and-spoke contracts (with potentially different bytecodes) on the same address across multiple chains.
 
 ## Prerequisites
 
@@ -9,7 +12,7 @@ This guide walks you through how to use `omni-deployer` to deploy your smart con
 Before starting:
 - Ensure **Node.js** (16.x+) and **npm** are installed.
 - Install **Foundry** globally (`forge` command available). [Instructions](https://book.getfoundry.sh/getting-started/installation).
-- Install **Supersim** by following [Instructions](https://github.com/ethereum-optimism/supersim). (optional if you're deploying on Superchain Devnets)
+- Install **Supersim** by following [Instructions](https://github.com/ethereum-optimism/supersim). (Optional if you're deploying on Superchain Devnets)
 - Have a private key for the deployment account ready (set as an environment variable).
 
 ## Step-by-Step User Flow
@@ -33,7 +36,7 @@ npm i @omni-kit/omni-deployer
 
 ### 3. Run Supersim Anvil (Optional For Superchain Devnet Users)
 
-> **Note:** If you are deploying contracts Superchain Devnets on as per the [the Optimism Console](https://console.optimism.io/getting-started), then you don't have to follow Step:3 or installing the  supersim
+> Note: If you are deploying contracts on Superchain Devnets as per the Optimism Console, you don’t need to follow this step or install Supersim.
 
 Start the Supersim Anvil to simulate the Superchain environment. You can specify the chains you want the contracts to deploy on:
 
@@ -41,15 +44,12 @@ Start the Supersim Anvil to simulate the Superchain environment. You can specify
 supersim fork --network=sepolia --chains=op,base,mode --interop.autorelay
 ```
 
----
+### 4. Create Your Smart Contracts
 
-### Option 1: Using a Config File
-
-#### 4. Create Your Smart Contract
-
-Write your contract in your Foundry project (e.g., `src/TestToken.sol`):
+#### Example for `deploy` (Single Contract)
 
 ```solidity
+// src/TestToken.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -62,14 +62,54 @@ contract TestToken is ERC20 {
 }
 ```
 
-#### 5. Set Up Your Config File
+#### Example for `deploy-hs` (Hub-and-Spoke Contracts)
 
-Create a file named `superchain.json` in your project root with the following structure:
+```solidity
+// src/HubContract.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract HubContract {
+    address public admin;
+
+    constructor(address _admin) {
+        admin = _admin;
+    }
+
+    function doHubAction() external {
+        // Hub-specific logic
+    }
+}
+```
+
+```solidity
+// src/SpokeContract.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract SpokeContract {
+    address public adminAddress;
+
+    constructor(address _adminAddress) {
+        adminAddress = _adminAddress;
+    }
+
+    function doSpokeAction() external {
+        // Spoke-specific logic
+    }
+}
+```
+
+### 5. Set Up Your Config File (Optional)
+
+#### For `deploy` (Single Contract)
+
+Create a file named `superchain.json` in your project root:
 
 ```json
 {
   "chains": [420120000, 420120001],
-  "factoryContract": "0x538DB2dF0f1CCF9fBA392A0248D41292f01D3966",
+  "factoryContract": "0x5a0632d24ddae5B4CB511aBB134561b9396473b4",
   "contractName": "TestToken",
   "constructorArgs": ["MyToken", "MTK"],
   "rpcUrl": "https://interop-alpha-0.optimism.io",
@@ -77,23 +117,24 @@ Create a file named `superchain.json` in your project root with the following st
 }
 ```
 
-**Fields:**
-- **chains:** Chain IDs to deploy to.
-- **factoryContract:** Address of the SuperchainFactory contract.
-  - For deployments on Superchain Devnets 0 and 1 (as per [the Optimism Console](https://console.optimism.io/getting-started)), use:
-    ```
-    "factoryContract": "0x538DB2dF0f1CCF9fBA392A0248D41292f01D3966"
-    ```
-  - For deployments on forked OP Sepolia, Base Sepolia, and Mode Sepolia chains, use:
-    ```
-    "factoryContract": "0x6Aac2c1414489A8362AC2feac5EE448Bf7199A14"
-    ```
-- **contractName:** Matches your contract file (e.g., `TestToken.sol`).
-- **constructorArgs:** Arguments for your contract’s constructor.
-- **rpcUrl:** RPC endpoint of the initiating chain.
-- **salt:** String for deterministic deployment.
+#### For `deploy-hs` (Hub-and-Spoke Contracts)
 
-#### 6. Set Your Private Key
+Create a file named `hubAndSpokeConfig.json` in your project root:
+
+```json
+{
+  "chains": [420120000, 420120001],
+  "factoryContract": "0x5a0632d24ddae5B4CB511aBB134561b9396473b4",
+  "hubContract": "HubContract",
+  "spokeContract": "SpokeContract",
+  "hubConstructorArgs": ["0xYourAdminAddress"],
+  "spokeConstructorArgs": ["0xYourAdminAddress"],
+  "salt": "deployHS",
+  "rpcUrl": "https://interop-alpha-0.optimism.io"
+}
+```
+
+### 6. Set Your Private Key
 
 Export your private key securely:
 
@@ -101,73 +142,78 @@ Export your private key securely:
 export PRIVATE_KEY=0xYourPrivateKey
 ```
 
-#### 7. Run Omni-Deployer
+### 7. Run Omni-Deployer
 
-In your project directory, deploy using the config file:
+#### With a Config File
+
+For `deploy` (Single Contract):
 
 ```bash
 npx omni-deployer deploy superchain.json
 ```
 
-#### 8. What Happens
+For `deploy-hs` (Hub-and-Spoke Contracts):
 
-- Compiles your contract with `forge build`.
-- Deploys to the chain at `rpcUrl` and sends cross-chain messages to other chains.
+```bash
+npx omni-deployer deploy-hs hubAndSpokeConfig.json
+```
+
+#### Without a Config File (Interactive Mode)
+
+For `deploy`:
+
+```bash
+npx omni-deployer deploy
+```
+
+For `deploy-hs`:
+
+```bash
+npx omni-deployer deploy-hs
+```
+
+You’ll be asked to provide:
+- **Chain IDs:** Comma-separated list (e.g., `420120000,420120001`).
+- **Factory Contract Address:** use **`0x5a0632d24ddae5B4CB511aBB134561b9396473b4`** address (currently deployed on OP-BASE-MODE sepolia, Superchain Devnets 0 & 1).
+- **Contract Name(s):** For `deploy`, enter the contract name; for `deploy-hs`, enter hub and spoke contract names.
+- **Constructor Arguments:** Enter as a JSON array (e.g., `{"0xYourAdminAddress"}`) or comma-separated list.
+- **Salt:** Enter a salt string (e.g., `deployHS`).
+- **RPC URL:** Enter the RPC endpoint (e.g., `https://interop-alpha-0.optimism.io`).
+
+### 8. What Happens
+
+- Compiles your contracts with `forge build`.
+- For `deploy`: Deploys the contract to the chain at `rpcUrl` and sends cross-chain messages to deploy it on other chains at the same address.
+- For `deploy-hs`: Deploys the hub contract on the chain at `rpcUrl` and sends cross-chain messages to deploy spoke contracts on the chains listed in `chains` at the same address.
 - Outputs the transaction hash and deployed addresses.
+- checkout [Omnikit](https://github.com/Omni-kit/omnikit/blob/main/src/CrossChainDeploymentFactory.sol) to working of the Contract underhood.
 
-#### 9. Verify Output
+### 9. Verify Output
 
-Example output:
+#### Example for `deploy`
 
 ```
 Compiling contract with forge build...
-Deploying contract across chains: [901, 902]
+Deploying contract across chains: [420120000, 420120001]
 Transaction hash: 0x...
 Deployed contract address on local chain: 0x...
 Computed CREATE2 address (for all chains): 0x...
 Contract has been deployed across all specified chains.
 ```
 
----
+#### Example for `deploy-hs`
 
-### Option 2: Interactive Mode
-
-#### 4. Create Your Smart Contract
-
-Write your contract as shown above (e.g., `src/TestToken.sol`).
-
-#### 5. Set Your Private Key
-
-Export your private key:
-
-```bash
-export PRIVATE_KEY=0xYourPrivateKey
 ```
-
-#### 6. Run Omni-Deployer Without a Config
-
-In your project directory, run:
-
-```bash
-npx omni-deployer deploy
+Compiling contracts with forge build...
+Deploying hub and spoke contracts...
+Transaction hash: 0x...
+Deployed hub contract address on local chain: 0x...
+Computed CREATE3 address (for all chains): 0x...
+Hub and spoke contracts have been deployed across specified chains.
 ```
-
-#### 7. Follow the Prompts
-
-You will be asked to enter the following details:
-- **Chain IDs:** Enter as a comma-separated list (e.g., `901, 902`).
-- **Factory Contract Address:** 
-  - For Superchain Devnets 0 and 1: `0x538DB2dF0f1CCF9fBA392A0248D41292f01D3966`
-  - For forked OP Sepolia, Base Sepolia, and Mode Sepolia chains: `0x6Aac2c1414489A8362AC2feac5EE448Bf7199A14`
-- **Contract Name:** Enter your contract name (e.g., `TestToken`).
-- **Constructor Arguments:** Enter as a JSON array (e.g., `["MyToken", "MTK"]`) or as a comma-separated list (e.g., `MyToken, MTK`).
-- **Salt:** Enter a salt string (e.g., `mysalt`).
-- **RPC URL:** Enter the RPC endpoint (e.g., `http://127.0.0.1:9545`).
-
-Verify the output as shown in the config file option above.
 
 ## Conclusion
 
-By following this guide, you can efficiently deploy your smart contracts across multiple chains using `omni-deployer`. Whether you choose a configuration file or interactive mode, `omni-deployer` simplifies multi-chain deployments.
+With `omni-deployer`, you can easily deploy contracts across multiple chains using either a configuration file or interactive prompts. The `deploy` command is ideal for deploying identical contracts, while `deploy-hs` supports hub-and-spoke architectures with different bytecodes at the same address.
 
 For further assistance, refer to the official documentation or open an issue in the repository. Happy deploying! 🚀
