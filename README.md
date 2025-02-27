@@ -4,14 +4,26 @@ This guide walks you through how to use `omni-deployer` to deploy your smart con
 
 ## Prerequisites
 
+> **Note:** If you are using Windows OS, you must run these commands inside **WSL (Windows Subsystem for Linux)** to ensure compatibility with Foundry and other tools.
+
 Before starting:
 - Ensure **Node.js** (16.x+) and **npm** are installed.
 - Install **Foundry** globally (`forge` command available). [Instructions](https://book.getfoundry.sh/getting-started/installation).
+- Install **Supersim** by following [Instructions](https://github.com/ethereum-optimism/supersim).
 - Have a private key for the deployment account ready (set as an environment variable).
 
 ## Step-by-Step User Flow
 
-### 1. Install Omni-Deployer
+### 1. Initialize Foundry Project
+
+Before deploying, initialize a Foundry project:
+
+```bash
+forge init my-foundry-project
+cd my-foundry-project
+```
+
+### 2. Install Omni-Deployer
 
 Before deploying, install the Omni-Deployer library:
 
@@ -19,9 +31,9 @@ Before deploying, install the Omni-Deployer library:
 npm i @omni-kit/omni-deployer
 ```
 
-### 1. Run Supersim Anvil
+### 3. Run Supersim Anvil
 
-Before deploying, start the supersim anvil to simulate the Superchain environment:
+Before deploying, start the supersim anvil to simulate the Superchain environment, you can keep the superchains that you want the contracts to deploy on:
 
 ```bash
 supersim fork --network=sepolia --chains=op,base,mode --interop.autorelay
@@ -29,7 +41,7 @@ supersim fork --network=sepolia --chains=op,base,mode --interop.autorelay
 
 ### Option 1: Using a Config File
 
-#### 2. Create Your Smart Contract
+#### 4. Create Your Smart Contract
 
 Write your contract in a Foundry project (e.g., `src/TestToken.sol`):
 
@@ -46,7 +58,7 @@ contract TestToken is ERC20 {
 }
 ```
 
-#### 3. Set Up Your Config File
+#### 5. Set Up Your Config File
 
 Create `superchain.json` in your project root, add the configuration using below format:
 
@@ -67,7 +79,7 @@ Create `superchain.json` in your project root, add the configuration using below
 - `rpcUrl`: RPC endpoint of the initiating chain.
 - `salt`: String for deterministic deployment.
 
-#### 4. Set Your Private Key
+#### 6. Set Your Private Key
 
 Export your private key securely:
 
@@ -75,7 +87,7 @@ Export your private key securely:
 export PRIVATE_KEY=0xYourPrivateKey
 ```
 
-#### 5. Run Omni-Deployer
+#### 7. Run Omni-Deployer
 
 In your project directory:
 
@@ -83,12 +95,12 @@ In your project directory:
 npx omni-deployer deploy superchain.json
 ```
 
-#### 6. What Happens
+#### 8. What Happens
 - Compiles your contract with `forge build`.
 - Deploys to the chain at `rpcUrl` and sends cross-chain messages to other chains.
 - Outputs the transaction hash and deployed addresses.
 
-#### 7. Verify Output
+#### 9. Verify Output
 
 Example output:
 
@@ -105,11 +117,11 @@ Contract has been deployed across all specified chains.
 
 ### Option 2: Interactive Mode
 
-#### 2. Create Your Smart Contract
+#### 4. Create Your Smart Contract
 
 Same as above (e.g., `src/TestToken.sol`).
 
-#### 3. Set Your Private Key
+#### 5. Set Your Private Key
 
 Export your private key:
 
@@ -117,7 +129,7 @@ Export your private key:
 export PRIVATE_KEY=0xYourPrivateKey
 ```
 
-#### 4. Run Omni-Deployer Without a Config
+#### 6. Run Omni-Deployer Without a Config
 
 In your project directory:
 
@@ -125,7 +137,7 @@ In your project directory:
 npx omni-deployer deploy
 ```
 
-#### 5. Follow the Prompts
+#### 7. Follow the Prompts
 
 Enter the Details accordingly, and then verify the output as shown above.
   
