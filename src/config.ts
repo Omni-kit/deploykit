@@ -11,12 +11,12 @@ interface Config {
 }
 
 interface HubSpokeConfig {
+  chains: number[];
+  factoryContract: string;
   hubContract: string;
   spokeContract: string;
   hubConstructorArgs?: any[];
   spokeConstructorArgs?: any[];
-  spokeChains: number[];
-  factoryContract: string;
   salt: string;
   rpcUrl: string;
 }
@@ -104,7 +104,6 @@ async function loadConfig(configPath?: string): Promise<Config> {
   const answers = await inquirer.prompt(questions);
   config = { ...config, ...answers };
 
-  // Final validation
   if (!config.chains || !Array.isArray(config.chains) || config.chains.length === 0) {
     throw new Error('Invalid or missing "chains"');
   }
@@ -136,6 +135,21 @@ async function loadHubSpokeConfig(configPath?: string): Promise<HubSpokeConfig> 
   }
 
   const questions = [
+    {
+      type: 'input',
+      name: 'chains',
+      message: 'Enter chain IDs for spoke deployments (comma-separated, e.g., 100,101,102):',
+      when: () => !config.chains || !Array.isArray(config.chains) || config.chains.length === 0,
+      filter: (input: string) => input.split(',').map((id) => parseInt(id.trim(), 10)),
+      validate: (input: number[]) => input.length > 0 ? true : 'At least one chain ID is required.'
+    },
+    {
+      type: 'input',
+      name: 'factoryContract',
+      message: 'Enter factory contract address (e.g., 0x538DB2dF0f1CCF9fBA392A0248D41292f01D3966):',
+      when: () => !config.factoryContract,
+      validate: (input: string) => !!input ? true : 'Factory contract address is required.'
+    },
     {
       type: 'input',
       name: 'hubContract',
@@ -188,21 +202,6 @@ async function loadHubSpokeConfig(configPath?: string): Promise<HubSpokeConfig> 
     },
     {
       type: 'input',
-      name: 'spokeChains',
-      message: 'Enter spoke chain IDs (comma-separated, e.g., 100,101,102):',
-      when: () => !config.spokeChains || !Array.isArray(config.spokeChains) || config.spokeChains.length === 0,
-      filter: (input: string) => input.split(',').map((id) => parseInt(id.trim(), 10)),
-      validate: (input: number[]) => input.length > 0 ? true : 'At least one spoke chain ID is required.'
-    },
-    {
-      type: 'input',
-      name: 'factoryContract',
-      message: 'Enter factory contract address (e.g., 0x538DB2dF0f1CCF9fBA392A0248D41292f01D3966):',
-      when: () => !config.factoryContract,
-      validate: (input: string) => !!input ? true : 'Factory contract address is required.'
-    },
-    {
-      type: 'input',
       name: 'salt',
       message: 'Enter salt (e.g., mysalt):',
       when: () => !config.salt,
@@ -221,17 +220,17 @@ async function loadHubSpokeConfig(configPath?: string): Promise<HubSpokeConfig> 
   config = { ...config, ...answers };
 
   // Final validation
-  if (!config.hubContract) {
-    throw new Error('Missing "hubContractName"');
-  }
-  if (!config.spokeContract) {
-    throw new Error('Missing "spokeContractName"');
-  }
-  if (!config.spokeChains || !Array.isArray(config.spokeChains) || config.spokeChains.length === 0) {
-    throw new Error('Invalid or missing "spokeChains"');
+  if (!config.chains || !Array.isArray(config.chains) || config.chains.length === 0) {
+    throw new Error('Invalid or missing "chains"');
   }
   if (!config.factoryContract) {
     throw new Error('Missing "factoryContract"');
+  }
+  if (!config.hubContract) {
+    throw new Error('Missing "hubContract"');
+  }
+  if (!config.spokeContract) {
+    throw new Error('Missing "spokeContract"');
   }
   if (!config.salt) {
     throw new Error('Missing "salt"');

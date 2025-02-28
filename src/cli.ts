@@ -16,6 +16,17 @@ const factoryAbi = [
   'event CrossChainMessageSent(uint256 indexed chainId, address indexed targetFactory)',
 ];
 
+/**
+ * Checks if a contract exists at a given address.
+ * @param provider - Ethers provider.
+ * @param address - Address to check.
+ * @returns True if contract code exists at the address, false otherwise.
+ */
+async function contractExists(provider: ethers.providers.JsonRpcProvider, address: string): Promise<boolean> {
+  const code = await provider.getCode(address);
+  return code !== '0x';
+}
+
 program
   .command('deploy [configPath]')
   .alias('d')
@@ -51,6 +62,15 @@ program
       const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
       const wallet = new ethers.Wallet(privateKey, provider);
       const factory = new Contract(config.factoryContract, factoryAbi, wallet);
+
+      // Compute CREATE2 address
+      const computedAddress = computeCreate2Address(config.factoryContract, formattedSalt, deployBytecode);
+
+      // Check if contract already exists at the computed address
+      if (await contractExists(provider, computedAddress)) {
+        console.log(`Contract already deployed at ${computedAddress}. Use a different salt to deploy a new instance.`);
+        return;
+      }
 
       // Estimate gas for the deployment transaction
       let gasEstimate;
@@ -92,16 +112,16 @@ program
       });
 
       if (!event) {
-        throw new Error('ContractDeployed event not found in receipt');
+        throw new Error(
+          'FactoryContract not found. Check configuration parameters like Factory Contract address and RPC url'
+        );
       }
 
       const parsedEvent = factoryInterface.parseLog(event);
       const deployedAddress = ethers.utils.getAddress(parsedEvent.args.contractAddress);
       console.log('Deployed contract address on local chain:', deployedAddress);
 
-      // Compute and verify CREATE2 address
-      const computedAddress = computeCreate2Address(config.factoryContract, formattedSalt, deployBytecode);
-      console.log('Computed CREATE2 address (for all chains):', computedAddress);
+      // Verify CREATE2 address
       if (deployedAddress.toLowerCase() !== computedAddress.toLowerCase()) {
         console.warn('Warning: Local deployed address does not match computed CREATE2 address');
       }
@@ -161,6 +181,15 @@ program
       const wallet = new ethers.Wallet(privateKey, provider);
       const factory = new Contract(config.factoryContract, factoryAbi, wallet);
 
+      // Compute CREATE3 address
+      const computedAddress = computeCreate3Address(config.factoryContract, formattedSalt);
+
+      // Check if contract already exists at the computed address
+      if (await contractExists(provider, computedAddress)) {
+        console.log(`Contract already deployed at ${computedAddress}. Use a different salt to deploy a new instance.`);
+        return;
+      }
+
       // Estimate gas for the hub-spoke deployment
       let gasEstimate;
       try {
@@ -171,13 +200,13 @@ program
             hubDeployBytecode,
             spokeDeployBytecode,
             formattedSalt,
-            config.spokeChains,
+            config.chains,  // Changed from config.spokeChains to config.chains
           ]),
         });
         console.log('Estimated gas:', gasEstimate.toString());
       } catch (error) {
         console.warn('Gas estimation failed, using manual gas limit of 6,000,000');
-        gasEstimate = 8000000; // Fallback gas limit for hub-spoke deployment
+        gasEstimate = 6000000; // Fallback gas limit for hub-spoke deployment
       }
 
       // Deploy the hub and spoke contracts
@@ -185,7 +214,7 @@ program
         hubDeployBytecode,
         spokeDeployBytecode,
         formattedSalt,
-        config.spokeChains,
+        config.chains,  // Changed from config.spokeChains to config.chains
         {
           gasLimit: gasEstimate,
         }
@@ -208,23 +237,23 @@ program
       });
 
       if (!event) {
-        throw new Error('ContractDeployed event not found in receipt');
+        throw new Error(
+          'FactoryContract not found. Check configuration parameters like Factory Contract address and RPC url.'
+        );
       }
 
       const parsedEvent = factoryInterface.parseLog(event);
       const hubAddress = ethers.utils.getAddress(parsedEvent.args.contractAddress);
       console.log('Deployed hub contract address on local chain:', hubAddress);
 
-      // Compute and verify CREATE3 address
-      const computedAddress = computeCreate3Address(config.factoryContract, formattedSalt);
-      console.log('Computed CREATE3 address (used for all chains):', computedAddress);
+      // Verify CREATE3 address
       if (hubAddress.toLowerCase() !== computedAddress.toLowerCase()) {
         console.warn('Warning: Local deployed address does not match computed CREATE3 address');
       }
 
       // Log deployment information
       console.log(`Hub contract (${config.hubContract}) deployed on chain ID ${await provider.getNetwork().then(n => n.chainId)}`);
-      console.log(`Spoke contract (${config.spokeContract}) deployment initiated on chains:`, config.spokeChains);
+      console.log(`Spoke contract (${config.spokeContract}) deployment initiated on chains:`, config.chains);  // Changed from config.spokeChains to config.chains
       console.log('All contracts will be deployed to the same address:', computedAddress);
     } catch (error) {
       console.error('Error:', (error as Error).message);
