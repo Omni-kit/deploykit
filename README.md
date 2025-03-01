@@ -1,9 +1,20 @@
-# Deploykit User Flow
+# OmniKit User Flow
 
 This guide walks you through how to use `omni-deployer` to deploy your smart contracts across multiple chains using the `SuperchainFactory`. The package supports two main commands:
 
 - **`deploy`**: Deploys the same contract on multiple chains at the same address.
 - **`deploy-hs`**: Deploys hub-and-spoke contracts (with potentially different bytecodes) on the same address across multiple chains.
+
+## What is the Hub and Spoke Contract Architecture
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/c8510a07-9f55-4780-86bd-b770ed9713ba" width="500" height="600">
+</p>
+
+- **Central Hub:** One main contract on Chain-A that stores all data and handles all write operations.
+- **Multiple Spokes:** Contracts on separate chains (B, C, D) that only make cross-chain calls to the Hub Contract.
+- **Data Management:** All storage variables and state changes happen only in the Hub, creating a single source of truth.
+- **Frontend Access:** Frontend reads data from the Hub only but can interact with either Hub or Spoke depending on which chain the user is connected to.
 
 ## Prerequisites
 
