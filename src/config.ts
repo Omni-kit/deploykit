@@ -21,6 +21,95 @@ interface HubSpokeConfig {
   rpcUrl: string;
 }
 
+/**
+ * Parses and validates chain IDs from a comma-separated string
+ * @returns An array of valid chain IDs or an error message
+ */
+const validateAndParseChainIds = (input: string): number[] | string => {
+  if (!input || !input.trim()) {
+    return 'At least one chain ID is required.';
+  }
+  
+  const ids = input.split(',');
+  const result: number[] = [];
+  
+  for (const idStr of ids) {
+    const trimmed = idStr.trim();
+    if (!trimmed) continue;
+    
+    // Check if the input contains only digits
+    if (!/^\d+$/.test(trimmed)) {
+      return `"${trimmed}" is not a valid chain ID. All chain IDs must be positive integers.`;
+    }
+    
+    const id = parseInt(trimmed, 10);
+    if (id <= 0) {
+      return `"${id}" is not valid. Chain IDs must be positive integers.`;
+    }
+    
+    result.push(id);
+  }
+  
+  if (result.length === 0) {
+    return 'At least one valid chain ID is required.';
+  }
+  
+  return result;
+};
+
+const validateEVMAddress = (input: string): boolean | string => {
+  if (!input || !input.trim()) {
+    return 'Address is required.';
+  }
+  
+  // EVM addresses should be 42 characters long (0x + 40 hex chars)
+  if (!/^0x[0-9a-fA-F]{40}$/.test(input)) {
+    return 'Invalid EVM address format. Address should be in format: 0x followed by 40 hexadecimal characters.';
+  }
+  return true;
+};
+
+const validateUrl = (input: string): boolean | string => {
+  if (!input || !input.trim()) {
+    return 'URL is required.';
+  }
+  
+  try {
+    new URL(input);
+    return true;
+  } catch (e) {
+    return 'Invalid URL format. Please enter a valid URL (e.g., https://rpc.example.com).';
+  }
+};
+
+const parseConstructorArgs = (input: string): any[] | string => {
+  if (!input || !input.trim()) return [];
+  
+  try {
+    const parsed = JSON.parse(input);
+    if (Array.isArray(parsed)) return parsed;
+  } catch {
+    // If not valid JSON, try comma-separated list
+    return input.split(',').map((item) => item.trim());
+  }
+  return input.split(',').map((item) => item.trim());
+};
+
+const validateConstructorArgs = (input: string): boolean | string => {
+  if (!input || !input.trim()) return true;
+  
+  try {
+    const parsed = JSON.parse(input);
+    return Array.isArray(parsed) 
+      ? true 
+      : 'Input must be a JSON array (e.g., ["arg1", 42]) or comma-separated list (e.g., arg1, 42)';
+  } catch {
+    return input.includes(',') || !input.includes(' ')
+      ? true
+      : 'Input must be a comma-separated list (e.g., arg1, 42) or JSON array (e.g., ["arg1", 42])';
+  }
+};
+
 async function loadConfig(configPath?: string): Promise<Config> {
   let config: Partial<Config> = {};
 
@@ -35,18 +124,20 @@ async function loadConfig(configPath?: string): Promise<Config> {
   const questions = [
     {
       type: 'input',
-      name: 'chains',
-      message: 'Enter chain IDs (comma-separated, e.g., 100,101,102):',
+      name: 'chainsInput', // Use a different name to store raw input
+      message: 'Enter chain IDs (comma-separated, e.g., 1,137,42161):',
       when: () => !config.chains || !Array.isArray(config.chains) || config.chains.length === 0,
-      filter: (input: string) => input.split(',').map((id) => parseInt(id.trim(), 10)),
-      validate: (input: number[]) => input.length > 0 ? true : 'At least one chain ID is required.'
+      validate: (input: string) => {
+        const result = validateAndParseChainIds(input);
+        return typeof result === 'string' ? result : true;
+      }
     },
     {
       type: 'input',
       name: 'factoryContract',
       message: 'Enter factory contract address (e.g., 0x538DB2dF0f1CCF9fBA392A0248D41292f01D3966):',
       when: () => !config.factoryContract,
-      validate: (input: string) => !!input ? true : 'Factory contract address is required.'
+      validate: validateEVMAddress
     },
     {
       type: 'input',
@@ -57,33 +148,11 @@ async function loadConfig(configPath?: string): Promise<Config> {
     },
     {
       type: 'input',
-      name: 'constructorArgs',
+      name: 'constructorArgsInput', // Use a different name to store raw input
       message: 'Enter constructor arguments as a JSON array or comma-separated list (e.g., ["arg1", 42] or arg1, 42, or press Enter for none):',
       when: () => !config.constructorArgs || !Array.isArray(config.constructorArgs),
       default: '',
-      filter: (input: unknown): any[] => {
-        const inputStr = String(input ?? '');
-        if (!inputStr.trim()) return [];
-        try {
-          const parsed = JSON.parse(inputStr);
-          if (Array.isArray(parsed)) return parsed;
-        } catch {
-          return inputStr.split(',').map((item) => item.trim());
-        }
-        return inputStr.split(',').map((item) => item.trim());
-      },
-      validate: (input: unknown): boolean | string => {
-        const inputStr = String(input ?? '');
-        if (!inputStr.trim()) return true;
-        try {
-          const parsed = JSON.parse(inputStr);
-          return Array.isArray(parsed) ? true : 'Input must be a JSON array (e.g., ["arg1", 42]) or comma-separated list (e.g., arg1, 42)';
-        } catch {
-          return inputStr.includes(',') || !inputStr.includes(' ')
-            ? true
-            : 'Input must be a comma-separated list (e.g., arg1, 42) or JSON array (e.g., ["arg1", 42])';
-        }
-      }
+      validate: validateConstructorArgs
     },
     {
       type: 'input',
@@ -95,29 +164,58 @@ async function loadConfig(configPath?: string): Promise<Config> {
     {
       type: 'input',
       name: 'rpcUrl',
-      message: 'Enter RPC URL (e.g., https://rpc.chain100.example.com):',
+      message: 'Enter RPC URL (e.g., https://rpc.ethereum.example.com):',
       when: () => !config.rpcUrl,
-      validate: (input: string) => !!input ? true : 'RPC URL is required.'
+      validate: validateUrl
     }
   ];
 
   const answers = await inquirer.prompt(questions);
+  
+  // Process the raw inputs after validation
+  if (answers.chainsInput) {
+    const parsedChains = validateAndParseChainIds(answers.chainsInput);
+    if (typeof parsedChains === 'string') {
+      throw new Error(`Chain ID validation failed: ${parsedChains}`);
+    }
+    answers.chains = parsedChains;
+    delete answers.chainsInput; // Remove the temporary input property
+  }
+  
+  if (answers.constructorArgsInput !== undefined) {
+    answers.constructorArgs = parseConstructorArgs(answers.constructorArgsInput);
+    delete answers.constructorArgsInput; // Remove the temporary input property
+  }
+  
   config = { ...config, ...answers };
 
+  // Final validation of all fields
+  const errors: string[] = [];
+
   if (!config.chains || !Array.isArray(config.chains) || config.chains.length === 0) {
-    throw new Error('Invalid or missing "chains"');
+    errors.push('Invalid or missing "chains"');
   }
-  if (!config.factoryContract) {
-    throw new Error('Missing "factoryContract"');
+  if (!config.factoryContract || !/^0x[0-9a-fA-F]{40}$/.test(config.factoryContract)) {
+    errors.push('Invalid or missing "factoryContract". Must be a valid EVM address');
   }
   if (!config.contractName) {
-    throw new Error('Missing "contractName"');
+    errors.push('Missing "contractName"');
   }
   if (!config.salt) {
-    throw new Error('Missing "salt"');
+    errors.push('Missing "salt"');
   }
   if (!config.rpcUrl) {
-    throw new Error('Missing "rpcUrl"');
+    errors.push('Missing "rpcUrl"');
+  } else {
+    try {
+      new URL(config.rpcUrl);
+    } catch (e) {
+      errors.push('Invalid "rpcUrl". Must be a valid URL');
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Configuration validation failed:\n${errors.join('\n')}`);
   }
 
   return config as Config;
@@ -137,18 +235,20 @@ async function loadHubSpokeConfig(configPath?: string): Promise<HubSpokeConfig> 
   const questions = [
     {
       type: 'input',
-      name: 'chains',
-      message: 'Enter chain IDs for spoke deployments (comma-separated, e.g., 100,101,102):',
+      name: 'chainsInput', // Use a different name to store raw input
+      message: 'Enter chain IDs for spoke deployments (comma-separated, e.g., 1,137,42161):',
       when: () => !config.chains || !Array.isArray(config.chains) || config.chains.length === 0,
-      filter: (input: string) => input.split(',').map((id) => parseInt(id.trim(), 10)),
-      validate: (input: number[]) => input.length > 0 ? true : 'At least one chain ID is required.'
+      validate: (input: string) => {
+        const result = validateAndParseChainIds(input);
+        return typeof result === 'string' ? result : true;
+      }
     },
     {
       type: 'input',
       name: 'factoryContract',
       message: 'Enter factory contract address (e.g., 0x538DB2dF0f1CCF9fBA392A0248D41292f01D3966):',
       when: () => !config.factoryContract,
-      validate: (input: string) => !!input ? true : 'Factory contract address is required.'
+      validate: validateEVMAddress
     },
     {
       type: 'input',
@@ -166,39 +266,19 @@ async function loadHubSpokeConfig(configPath?: string): Promise<HubSpokeConfig> 
     },
     {
       type: 'input',
-      name: 'hubConstructorArgs',
+      name: 'hubConstructorArgsInput', // Use a different name to store raw input
       message: 'Enter hub constructor arguments as a JSON array or comma-separated list (e.g., ["arg1", 42] or arg1, 42, or press Enter for none):',
       when: () => !config.hubConstructorArgs || !Array.isArray(config.hubConstructorArgs),
       default: '',
-      filter: (input: unknown): any[] => {
-        const inputStr = String(input ?? '');
-        if (!inputStr.trim()) return [];
-        try {
-          const parsed = JSON.parse(inputStr);
-          if (Array.isArray(parsed)) return parsed;
-        } catch {
-          return inputStr.split(',').map((item) => item.trim());
-        }
-        return inputStr.split(',').map((item) => item.trim());
-      }
+      validate: validateConstructorArgs
     },
     {
       type: 'input',
-      name: 'spokeConstructorArgs',
+      name: 'spokeConstructorArgsInput', // Use a different name to store raw input
       message: 'Enter spoke constructor arguments as a JSON array or comma-separated list (e.g., ["arg1", 42] or arg1, 42, or press Enter for none):',
       when: () => !config.spokeConstructorArgs || !Array.isArray(config.spokeConstructorArgs),
       default: '',
-      filter: (input: unknown): any[] => {
-        const inputStr = String(input ?? '');
-        if (!inputStr.trim()) return [];
-        try {
-          const parsed = JSON.parse(inputStr);
-          if (Array.isArray(parsed)) return parsed;
-        } catch {
-          return inputStr.split(',').map((item) => item.trim());
-        }
-        return inputStr.split(',').map((item) => item.trim());
-      }
+      validate: validateConstructorArgs
     },
     {
       type: 'input',
@@ -210,33 +290,66 @@ async function loadHubSpokeConfig(configPath?: string): Promise<HubSpokeConfig> 
     {
       type: 'input',
       name: 'rpcUrl',
-      message: 'Enter RPC URL (e.g., https://rpc.chain100.example.com):',
+      message: 'Enter RPC URL (e.g., https://rpc.ethereum.example.com):',
       when: () => !config.rpcUrl,
-      validate: (input: string) => !!input ? true : 'RPC URL is required.'
+      validate: validateUrl
     }
   ];
 
   const answers = await inquirer.prompt(questions);
+  
+  // Process the raw inputs after validation
+  if (answers.chainsInput) {
+    const parsedChains = validateAndParseChainIds(answers.chainsInput);
+    if (typeof parsedChains === 'string') {
+      throw new Error(`Chain ID validation failed: ${parsedChains}`);
+    }
+    answers.chains = parsedChains;
+    delete answers.chainsInput; // Remove the temporary input property
+  }
+  
+  if (answers.hubConstructorArgsInput !== undefined) {
+    answers.hubConstructorArgs = parseConstructorArgs(answers.hubConstructorArgsInput);
+    delete answers.hubConstructorArgsInput; // Remove the temporary input property
+  }
+  
+  if (answers.spokeConstructorArgsInput !== undefined) {
+    answers.spokeConstructorArgs = parseConstructorArgs(answers.spokeConstructorArgsInput);
+    delete answers.spokeConstructorArgsInput; // Remove the temporary input property
+  }
+  
   config = { ...config, ...answers };
 
   // Final validation
+  const errors: string[] = [];
+
   if (!config.chains || !Array.isArray(config.chains) || config.chains.length === 0) {
-    throw new Error('Invalid or missing "chains"');
+    errors.push('Invalid or missing "chains"');
   }
-  if (!config.factoryContract) {
-    throw new Error('Missing "factoryContract"');
+  if (!config.factoryContract || !/^0x[0-9a-fA-F]{40}$/.test(config.factoryContract)) {
+    errors.push('Invalid or missing "factoryContract". Must be a valid EVM address');
   }
   if (!config.hubContract) {
-    throw new Error('Missing "hubContract"');
+    errors.push('Missing "hubContract"');
   }
   if (!config.spokeContract) {
-    throw new Error('Missing "spokeContract"');
+    errors.push('Missing "spokeContract"');
   }
   if (!config.salt) {
-    throw new Error('Missing "salt"');
+    errors.push('Missing "salt"');
   }
   if (!config.rpcUrl) {
-    throw new Error('Missing "rpcUrl"');
+    errors.push('Missing "rpcUrl"');
+  } else {
+    try {
+      new URL(config.rpcUrl);
+    } catch (e) {
+      errors.push('Invalid "rpcUrl". Must be a valid URL');
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Configuration validation failed:\n${errors.join('\n')}`);
   }
 
   return config as HubSpokeConfig;
